@@ -61,12 +61,6 @@ RUN set -eux; \
     # Clean up
     rm -rf /tmp/* /var/tmp/*
 
-# Optional: lightweight smoke test (kept separate for clearer cache layering)
-RUN set -eux; \
-    kubectl version --client --output=yaml >/dev/null; \
-    helm version >/dev/null; \
-    oc version --client >/dev/null
-
 # Switch back to unprivileged user provided by base image (if present)
 USER coder
 
