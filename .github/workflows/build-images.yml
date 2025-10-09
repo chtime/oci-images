@@ -1,0 +1,89 @@
+name: Build OCI Images
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Discover image directories
+        id: set-matrix
+        run: |
+          # Find all directories containing a Containerfile
+          DIRS=$(find . -maxdepth 2 -name "Containerfile" -type f | sed 's|/Containerfile||' | sed 's|^\./||' | sort)
+          
+          # Convert to JSON array for matrix
+          MATRIX_JSON=$(echo "$DIRS" | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          
+          echo "Found image directories: $DIRS"
+          echo "Matrix JSON: $MATRIX_JSON"
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+
+  build:
+    needs: discover
+    if: needs.discover.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image-dir: ${{ fromJson(needs.discover.outputs.matrix) }}
+      fail-fast: false
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.image-dir }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.image-dir }}
+          file: ./${{ matrix.image-dir }}/Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print image info
+        run: |
+          echo "Built image for directory: ${{ matrix.image-dir }}"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Display system information
+echo "=== System Information ==="
+echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+echo "Kernel: $(uname -r)"
+echo "Architecture: $(uname -m)"
+echo "CPU: $(nproc) cores"
+echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
+echo "Uptime: $(uptime -p)"
+echo ""
+
+echo "=== Disk Usage ==="
+df -h
+echo ""
+
+echo "=== Network Interfaces ==="
+ip addr show

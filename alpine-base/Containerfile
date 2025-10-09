@@ -1,0 +1,16 @@
+FROM alpine:latest
+
+# Install basic tools
+RUN apk update && apk add --no-cache \
+    curl \
+    wget \
+    bash \
+    git
+
+# Create a non-root user
+RUN adduser -D -s /bin/bash appuser
+
+USER appuser
+WORKDIR /home/appuser
+
+CMD ["/bin/bash"]

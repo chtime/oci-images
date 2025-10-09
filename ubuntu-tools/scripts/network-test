@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Network connectivity test script
+TARGET=${1:-"google.com"}
+
+echo "=== Network Test for $TARGET ==="
+
+# Test DNS resolution
+echo "Testing DNS resolution..."
+if nslookup $TARGET > /dev/null 2>&1; then
+    echo "✓ DNS resolution successful"
+else
+    echo "✗ DNS resolution failed"
+    exit 1
+fi
+
+# Test ping connectivity
+echo "Testing ping connectivity..."
+if ping -c 3 $TARGET > /dev/null 2>&1; then
+    echo "✓ Ping successful"
+else
+    echo "✗ Ping failed"
+fi
+
+# Test HTTP connectivity
+echo "Testing HTTP connectivity..."
+if curl -s --connect-timeout 5 http://$TARGET > /dev/null 2>&1; then
+    echo "✓ HTTP connection successful"
+else
+    echo "✗ HTTP connection failed"
+fi
+
+# Test HTTPS connectivity
+echo "Testing HTTPS connectivity..."
+if curl -s --connect-timeout 5 https://$TARGET > /dev/null 2>&1; then
+    echo "✓ HTTPS connection successful"
+else
+    echo "✗ HTTPS connection failed"
+fi
+
+echo "Network test completed."
