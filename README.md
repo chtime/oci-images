@@ -14,9 +14,7 @@ Each image folder should contain:
 
 ### Current Images
 
-- **alpine-base** - A minimal Alpine Linux image with basic tools (curl, wget, bash, git)
 - **nginx-custom** - A customized Nginx server with security headers and health check endpoint
-- **ubuntu-tools** - An Ubuntu-based image with development tools and custom utility scripts
 
 ## Usage
 
@@ -35,24 +33,16 @@ ghcr.io/<owner>/<repo>/<image-folder-name>:<tag>
 ```
 
 For example:
-- `ghcr.io/chtime/oci-images/alpine-base:latest`
+- `ghcr.io/chtime/oci-images/nginx-custom:latest`
 - `ghcr.io/chtime/oci-images/nginx-custom:main`
-- `ghcr.io/chtime/oci-images/ubuntu-tools:sha-abc123`
+- `ghcr.io/chtime/oci-images/nginx-custom:sha-abc123`
 
 ### Running Images
 
 ```bash
-# Pull and run the alpine-base image
-docker pull ghcr.io/chtime/oci-images/alpine-base:latest
-docker run -it ghcr.io/chtime/oci-images/alpine-base:latest
-
 # Run the nginx-custom image
 docker pull ghcr.io/chtime/oci-images/nginx-custom:latest
 docker run -p 8080:80 ghcr.io/chtime/oci-images/nginx-custom:latest
-
-# Run the ubuntu-tools image
-docker pull ghcr.io/chtime/oci-images/ubuntu-tools:latest
-docker run -it ghcr.io/chtime/oci-images/ubuntu-tools:latest
 ```
 
 ## GitHub Actions Workflow
