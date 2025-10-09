@@ -1,9 +1,9 @@
 FROM codercom/example-base:ubuntu-20251006
 
 # Build-time version arguments (override with --build-arg if needed)
-ARG KUBECTL_VERSION=v1.29.6
-ARG HELM_VERSION=v3.15.2
-ARG OC_VERSION=4.15.9
+ARG KUBECTL_VERSION=v1.34.1
+ARG HELM_VERSION=v3.19.0
+ARG OC_VERSION=4.17.27
 
 # These are automatically set by buildx for multi-arch builds; declare so we can use them.
 # Fallback defaults allow local single-arch docker build without buildx.
