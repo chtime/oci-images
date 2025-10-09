@@ -1,0 +1,72 @@
+FROM codercom/example-base:ubuntu-20251006
+
+# Build-time version arguments (override with --build-arg if needed)
+ARG KUBECTL_VERSION=v1.34.1
+ARG HELM_VERSION=v3.19.0
+ARG OC_VERSION=4.17.27
+
+# These are automatically set by buildx for multi-arch builds; declare so we can use them.
+# Fallback defaults allow local single-arch docker build without buildx.
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+USER root
+
+# Base packages (jq requested, plus essentials for extraction & verification)
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates \
+      jq \
+      curl \
+      tar \
+      gzip \
+      coreutils; \
+    rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------
+# Fetch artifacts using ADD (per request). Each ADD is cached
+# independently and will only re-run when its URL (version/arch) changes.
+# ------------------------------------------------------------------
+
+# kubectl binary + checksum
+ADD https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${TARGETOS}/${TARGETARCH}/kubectl /usr/local/bin/kubectl
+ADD https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${TARGETOS}/${TARGETARCH}/kubectl.sha256 /tmp/kubectl.sha256
+
+# Helm tarball + checksum list
+ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz
+ADD https://get.helm.sh/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz.sha256sum /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz.sha256sum
+
+# OpenShift oc client tarball + checksum manifest
+ADD https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OC_VERSION}/openshift-client-${TARGETOS}-${OC_VERSION}.tar.gz /tmp/openshift-client-${TARGETOS}-${OC_VERSION}.tar.gz
+ADD https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OC_VERSION}/sha256sum.txt /tmp/oc.sha256sum.txt
+
+# ------------------------------------------------------------------
+# Verify checksums, extract archives, move binaries into PATH
+# ------------------------------------------------------------------
+RUN set -eux; \
+    # kubectl checksum
+    echo "$(cat /tmp/kubectl.sha256)  /usr/local/bin/kubectl" | sha256sum -c -; \
+    chmod +x /usr/local/bin/kubectl; \
+    # helm checksum + extract
+    ( cd /tmp && grep "helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz" helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz.sha256sum | sha256sum -c - ); \
+    tar -xzf /tmp/helm-${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz -C /tmp; \
+    mv "/tmp/${TARGETOS}-${TARGETARCH}/helm" /usr/local/bin/helm; \
+    chmod +x /usr/local/bin/helm; \
+    # oc checksum + extract (versioned tarball openshift-client-${TARGETOS}-${OC_VERSION}.tar.gz)
+    ( cd /tmp && grep "openshift-client-${TARGETOS}-${OC_VERSION}.tar.gz" oc.sha256sum.txt | sha256sum -c - ); \
+    tar -xzf /tmp/openshift-client-${TARGETOS}-${OC_VERSION}.tar.gz -C /tmp oc; \
+    mv /tmp/oc /usr/local/bin/oc; \
+    chmod +x /usr/local/bin/oc; \
+    # Clean up
+    rm -rf /tmp/* /var/tmp/*
+
+# Switch back to unprivileged user provided by base image (if present)
+USER coder
+
+ENV PATH="/usr/local/bin:${PATH}"
+
+LABEL org.opencontainers.image.description="Coder workspace image with kubectl, oc & helm" \
+      versions.kubectl="${KUBECTL_VERSION}" \
+      versions.helm="${HELM_VERSION}" \
+      versions.oc="${OC_VERSION}"
