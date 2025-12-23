@@ -12,6 +12,7 @@ import (
 type ByteSize uint64
 
 var memoryAmount ByteSize
+var reducePercent int
 
 // memoryCmd represents the memory command
 var memoryCmd = &cobra.Command{
@@ -24,9 +25,15 @@ var memoryCmd = &cobra.Command{
 			return
 		}
 
-		slog.Info("allocating memory", "size", memoryAmount.String())
+		actualAmount := uint64(memoryAmount)
+		if reducePercent > 0 && reducePercent < 100 {
+			actualAmount = actualAmount * uint64(100-reducePercent) / 100
+			slog.Info("allocating memory", "requested", memoryAmount.String(), "reduced_by", fmt.Sprintf("%d%%", reducePercent), "actual", humanize.IBytes(actualAmount))
+		} else {
+			slog.Info("allocating memory", "size", memoryAmount.String())
+		}
 
-		buf := make([]byte, memoryAmount)
+		buf := make([]byte, actualAmount)
 		// Touch every page to force physical memory allocation
 		// OS uses lazy allocation - pages aren't committed until written
 		pageSize := 4096
@@ -46,6 +53,8 @@ var memoryCmd = &cobra.Command{
 
 func init() {
 	eatCmd.AddCommand(memoryCmd)
+
+	memoryCmd.Flags().IntVar(&reducePercent, "reduce", 0, "Reduce allocated memory by this percentage (0-99)")
 }
 
 func (b *ByteSize) String() string {
